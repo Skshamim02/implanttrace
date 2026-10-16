@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ImplantTrace{% endblock %} · ImplantTrace</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+{% block body %}
+<div class="shell">
+  <nav class="sidebar" aria-label="Main">
+    <div class="brand">ImplantTrace<span>Shop-floor traceability</span></div>
+    {% for href, label in nav %}
+      <a href="{{ href }}" class="{{ 'active' if (path == href or (href != '/' and path.startswith(href))) }}">{{ label }}</a>
+    {% endfor %}
+    <div class="me">
+      <b>{{ user.full_name }}</b>
+      <span class="role muted">{{ user.username }} · {{ user.role.value | title }}</span><br>
+      <a href="/account" class="small">Account</a>
+      <button type="button" data-logout>Sign out</button>
+    </div>
+  </nav>
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}
+</body>
+</html>

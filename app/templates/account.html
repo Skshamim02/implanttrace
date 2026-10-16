@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Account{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Your account</h1></div></div>
+<section class="grid grid-2">
+  <div class="card">
+    <h2>Profile</h2>
+    <table><tbody>
+      <tr><th>Name</th><td>{{ user.full_name }}</td></tr>
+      <tr><th>Username</th><td class="mono">{{ user.username }}</td></tr>
+      <tr><th>Role</th><td>{{ user.role.value | title }}</td></tr>
+      <tr><th>Password changed</th><td>{{ user.password_changed_at | dt }}</td></tr>
+    </tbody></table>
+  </div>
+  <form class="card" data-api="/api/v1/auth/change-password" data-success="Password changed">
+    <h2>Change password</h2>
+    <label>Current password <input name="current_password" type="password" required autocomplete="current-password"></label>
+    <label>New password <input name="new_password" type="password" required autocomplete="new-password"></label>
+    <p class="muted small">10+ characters with upper- and lower-case letters and a digit. Other sessions are signed out.</p>
+    <div class="form-actions"><button type="submit">Change password</button></div>
+  </form>
+</section>
+{% endblock %}

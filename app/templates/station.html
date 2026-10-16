@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "macros.html" import badge, order_badge %}
+{% block title %}Operator station{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Operator station</h1><p class="muted small">Signed in as <b>{{ user.full_name }}</b>. Everything you record here is signed with your name.</p></div>
+</div>
+
+<section class="card scan">
+  <form method="get" action="/station">
+    <label>Scan the traveller QR code or type the work order
+      <input name="order" value="{{ order_no }}" placeholder="WO-1001" autocomplete="off" data-autofocus>
+    </label>
+  </form>
+</section>
+
+{% if error %}<div class="notice bad" role="alert">{{ error }}</div>{% endif %}
+
+{% if order %}
+<section class="card">
+  <div class="page-head">
+    <div>
+      <h2><a href="/orders/{{ order.order_no }}">{{ order.order_no }}</a> {{ order_badge(order) }}</h2>
+      <p class="muted">{{ order.part.part_number }} · {{ order.part.description }} · Qty {{ order.quantity }} · Heat <span class="mono">{{ order.material.heat_number }}</span></p>
+    </div>
+  </div>
+
+  {% if order.status == OrderStatus.ON_HOLD %}
+    <div class="notice warn"><b>On hold.</b> Do not continue. Quality must review the failed inspection first.</div>
+  {% elif order.status.value in ('COMPLETE', 'SCRAPPED') %}
+    <div class="notice {{ 'good' if order.status.value == 'COMPLETE' else 'bad' }}">This order is {{ order.status.value | lower }}.</div>
+  {% endif %}
+
+  {% set ns = namespace(current=None) %}
+  {% for s in order.steps %}{% if ns.current is none and s.status.value in ('PENDING', 'IN_PROGRESS') %}{% set ns.current = s.seq %}{% endif %}{% endfor %}
+
+  {% for s in order.steps %}
+    {% set log = open_log[s.seq] %}
+    <div class="step-row {{ 'current' if s.seq == ns.current }}">
+      <span class="seq">{{ s.seq }}</span>
+      <div>
+        <div class="name">{{ s.name }} {{ badge(s.status.value) }}</div>
+        <div class="muted small">
+          {% set done = s.logs | selectattr('qty_good', 'ne', none) | list %}
+          {% set info = [] %}
+          {% if log %}{% set _ = info.append('Started by ' ~ log.operator ~ ' on ' ~ log.machine ~ ' · ' ~ (log.started_at | dt)) %}{% endif %}
+          {% if s.seq == ns.current %}{% set _ = info.append(qty_in[s.seq] ~ ' parts to process') %}{% endif %}
+          {% if done and s.status.value == 'DONE' %}{% set _ = info.append(done[-1].qty_good ~ ' good, ' ~ done[-1].qty_scrap ~ ' scrap · ' ~ done[-1].operator) %}{% endif %}
+          {{ info | join(' · ') }}
+        </div>
+      </div>
+      <div class="step-actions">
+        {% if s.seq == ns.current and order.status.value in ('RELEASED', 'IN_PROGRESS') %}
+          {% if s.status.value == 'PENDING' %}
+            <form class="inline-form" data-api="/api/v1/work-orders/{{ order.order_no }}/steps/{{ s.seq }}/start" data-success="{{ s.name }} started">
+              <label>Machine
+                <select name="machine" required>
+                  <option value="">Choose machine…</option>
+                  {% for m in machines %}<option value="{{ m.code }}">{{ m.code }} · {{ m.name }}</option>{% endfor %}
+                </select>
+              </label>
+              <button type="submit" class="big">Start</button>
+            </form>
+          {% elif s.status.value == 'IN_PROGRESS' %}
+            <form class="inline-form" data-api="/api/v1/work-orders/{{ order.order_no }}/steps/{{ s.seq }}/finish" data-success="{{ s.name }} finished">
+              <label>Good <input name="qty_good" type="number" min="0" max="{{ qty_in[s.seq] }}" value="{{ qty_in[s.seq] }}" required data-type="int"></label>
+              <label>Scrap <input name="qty_scrap" type="number" min="0" max="{{ qty_in[s.seq] }}" value="0" required data-type="int"></label>
+              <button type="submit" class="big">Finish</button>
+            </form>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% if s.seq == ns.current and s.name == inspection_step and s.status.value == 'IN_PROGRESS' %}
+      <p class="muted small">Inspection can only be finished after the CMM results are imported and all are in tolerance.</p>
+    {% endif %}
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

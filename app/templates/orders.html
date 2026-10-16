@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "macros.html" import order_badge, pager as pg %}
+{% block title %}Work orders{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Work orders</h1><p class="muted small">Released production orders and their progress</p></div>
+</div>
+
+{% if user.has_role(Role.SUPERVISOR) %}
+<details class="card panel" {{ 'open' if not orders and not search and not status }}>
+  <summary>Release a new work order</summary>
+  {% if not parts or not materials %}
+    <p class="notice warn">You need at least one active <a href="/parts">part</a> and one received <a href="/materials">material heat</a> first.</p>
+  {% else %}
+  <form data-api="/api/v1/work-orders" data-redirect="/orders/{order_no}" data-success="Work order {order_no} released">
+    <div class="form-grid">
+      <label>Order number <input name="order_no" required maxlength="30" placeholder="WO-1004" pattern="[A-Za-z0-9][A-Za-z0-9\-]*"></label>
+      <label>Part
+        <select name="part_number" required>
+          <option value="">Choose…</option>
+          {% for p in parts %}<option value="{{ p.part_number }}">{{ p.part_number }} · {{ p.description }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Quantity <input name="quantity" type="number" min="1" max="5000" required data-type="int"></label>
+      <label>Material heat
+        <select name="heat_number" required>
+          <option value="">Choose…</option>
+          {% for m in materials %}<option value="{{ m.heat_number }}">{{ m.heat_number }} · {{ m.grade }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Due date <input name="due_date" type="date"></label>
+    </div>
+    <div class="form-actions"><button type="submit">Release order</button><span class="muted small">Serial numbers are allocated on release.</span></div>
+  </form>
+  {% endif %}
+</details>
+{% endif %}
+
+<section class="card">
+  <div class="chips">
+    <a class="chip {{ 'on' if not status }}" href="/orders{{ '?search=' ~ (search | urlencode) if search }}">All</a>
+    {% for s in OrderStatus %}
+      <a class="chip {{ 'on' if status == s }}" href="/orders?status={{ s.value }}{{ '&search=' ~ (search | urlencode) if search }}">{{ s.value | replace('_', ' ') | title }}</a>
+    {% endfor %}
+  </div>
+  <form class="filters" method="get" action="/orders">
+    {% if status %}<input type="hidden" name="status" value="{{ status.value }}">{% endif %}
+    <label>Search <input name="search" value="{{ search }}" placeholder="Order, part or heat number"></label>
+    <button type="submit" class="secondary">Search</button>
+  </form>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Order</th><th>Part</th><th class="num">Qty</th><th>Heat</th><th>Status</th><th>Due</th><th>Released</th></tr></thead>
+    <tbody>
+    {% for o in orders %}
+      <tr>
+        <td><a href="/orders/{{ o.order_no }}"><b>{{ o.order_no }}</b></a></td>
+        <td>{{ o.part_number }}</td>
+        <td class="num">{{ o.quantity }}</td>
+        <td class="mono">{{ o.heat_number }}</td>
+        <td>{{ order_badge(o) }}</td>
+        <td class="nowrap">{{ o.due_date.strftime('%d %b %Y') if o.due_date else '–' }}</td>
+        <td class="nowrap muted">{{ o.created_at | dt }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="empty">No work orders match.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {{ pg(pager) }}
+</section>
+{% endblock %}

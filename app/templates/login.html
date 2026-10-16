@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block body %}
+<div class="login">
+  <form class="card" data-api="/api/v1/auth/login" data-redirect="{{ next }}" data-success="Signed in">
+    <h1>ImplantTrace</h1>
+    <p class="muted small">Shop-floor traceability. Sign in with your plant account.</p>
+    <label>Username
+      <input name="username" autocomplete="username" required data-autofocus autocapitalize="none">
+    </label>
+    <label>Password
+      <input name="password" type="password" autocomplete="current-password" required>
+    </label>
+    <button type="submit">Sign in</button>
+  </form>
+</div>
+{% endblock %}

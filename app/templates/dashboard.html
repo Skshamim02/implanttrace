@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "macros.html" import badge %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Dashboard</h1><p class="muted small">Production and quality at a glance · last 30 days unless stated</p></div>
+</div>
+
+{% if d.on_hold %}
+  <div class="notice warn"><b>{{ d.on_hold }} order{{ 's' if d.on_hold != 1 }} on hold</b> waiting for a Quality decision. <a href="/quality">Open hold queue →</a></div>
+{% endif %}
+
+<section class="grid grid-4">
+  <div class="card kpi">
+    <div class="label">Units completed · last 7 days</div>
+    <div class="value hero">{{ d.output_7d }}</div>
+    <div class="sub">Good parts leaving the final step</div>
+  </div>
+  <div class="card kpi"><a href="/orders?status=IN_PROGRESS">
+    <div class="label">Open work orders</div>
+    <div class="value">{{ d.open_orders }}</div>
+    <div class="sub">{{ d.overdue }} overdue</div></a>
+  </div>
+  <div class="card kpi">
+    <div class="label">Scrap rate</div>
+    <div class="value">{{ d.scrap_rate_30d | pct }}</div>
+    <div class="sub">Scrap ÷ parts processed, all steps</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Inspection first-pass yield</div>
+    <div class="value">{{ d.first_pass_yield_30d | pct }}</div>
+    <div class="sub">{{ d.checks_30d }} measurements</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Units completed per day</h2>
+  {% if d.output_max %}
+  <div class="chart" role="img" aria-label="Column chart of units completed per day over the last 14 days">
+    <div class="columns">
+      {% for p in d.output %}
+        <div class="col" tabindex="0" data-tip="{{ p.day.strftime('%a %d %b') }}: {{ p.units }} units">
+          {% if p.units and (p.units == d.output_max or loop.last) %}<span class="cap">{{ p.units }}</span>{% endif %}
+          <div class="bar" data-h="{{ (p.units / d.output_max * 100) | round(1) if d.output_max else 0 }}"></div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="col-axis">
+      {% for p in d.output %}<span>{{ p.day.strftime('%d %b') if loop.first or loop.last or loop.index == 8 else '' }}</span>{% endfor %}
+    </div>
+  </div>
+  <details class="panel small"><summary>Show as table</summary>
+    <div class="table-wrap"><table><thead><tr><th>Day</th><th class="num">Units</th></tr></thead><tbody>
+      {% for p in d.output %}<tr><td>{{ p.day.strftime('%a %d %b %Y') }}</td><td class="num">{{ p.units }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  </details>
+  {% else %}
+    <p class="empty">No completed units in the last 14 days.</p>
+  {% endif %}
+</section>
+
+<section class="grid grid-2">
+  {% for title, rows in [("Scrap rate by step", d.scrap_by_step), ("Scrap rate by machine", d.scrap_by_machine)] %}
+  <div class="card">
+    <h2>{{ title }}</h2>
+    {% if rows %}
+      {% set top = rows[0].rate if rows[0].rate else 1 %}
+      <div class="hbars" role="img" aria-label="{{ title }}">
+        {% for r in rows %}
+          <span class="name" title="{{ r.label }}">{{ r.label }}</span>
+          <span class="track" tabindex="0" data-tip="{{ r.label }}: {{ r.scrap }} scrapped of {{ r.total }} ({{ r.rate | pct }})">
+            <span class="bar" data-w="{{ (r.rate / top * 85) | round(1) if top else 0 }}"></span>
+            <span class="val">{{ r.rate | pct }}</span>
+          </span>
+        {% endfor %}
+      </div>
+      <details class="panel small"><summary>Show as table</summary>
+        <table><thead><tr><th></th><th class="num">Scrap</th><th class="num">Processed</th><th class="num">Rate</th></tr></thead><tbody>
+          {% for r in rows %}<tr><td>{{ r.label }}</td><td class="num">{{ r.scrap }}</td><td class="num">{{ r.total }}</td><td class="num">{{ r.rate | pct }}</td></tr>{% endfor %}
+        </tbody></table>
+      </details>
+    {% else %}
+      <p class="empty">No finished steps yet.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+<section class="grid grid-2">
+  <div class="card">
+    <h2>Orders by status</h2>
+    <table><tbody>
+      {% for status, n in d.counts.items() %}
+        <tr><td>{{ badge(status.value) }}</td><td class="num"><a href="/orders?status={{ status.value }}">{{ n }}</a></td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div>
+  <div class="card">
+    <h2>Recent activity</h2>
+    {% if d.recent %}
+    <ul class="timeline">
+      {% for e in d.recent %}
+        <li><span class="who">{{ e.user }}</span> · {{ e.reason }}
+          <div class="muted">{{ e.at | dt }} · {{ e.changes }} field{{ 's' if e.changes != 1 }} changed</div></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="empty">Nothing yet.</p>{% endif %}
+  </div>
+</section>
+{% endblock %}

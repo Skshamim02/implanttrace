@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "macros.html" import badge %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Users</h1><p class="muted small">Accounts are never deleted, so signatures and audit entries always resolve to a person. Deactivate leavers instead.</p></div>
+</div>
+
+<details class="card panel">
+  <summary>Add user</summary>
+  <form data-api="/api/v1/users" data-success="User {username} created">
+    <div class="form-grid">
+      <label>Username <input name="username" required maxlength="50" autocomplete="off" placeholder="j.murphy"></label>
+      <label>Full name <input name="full_name" required maxlength="100"></label>
+      <label>Role
+        <select name="role" required>{% for r in roles %}<option value="{{ r.value }}">{{ r.value | title }}</option>{% endfor %}</select>
+      </label>
+      <label>Initial password <input name="password" type="password" required autocomplete="new-password"></label>
+    </div>
+    <p class="muted small">Passwords need 10+ characters with upper- and lower-case letters and a digit.</p>
+    <div class="form-actions"><button type="submit">Create user</button></div>
+  </form>
+</details>
+
+<section class="card">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td class="mono"><b>{{ u.username }}</b></td>
+        <td>{{ u.full_name }}</td>
+        <td>
+          <form class="inline-form" data-api="/api/v1/users/{{ u.username }}" data-method="PATCH" data-success="Role updated">
+            <select name="role" aria-label="Role for {{ u.username }}" {{ 'disabled' if u.id == user.id }}>
+              {% for r in roles %}<option value="{{ r.value }}" {{ 'selected' if r == u.role }}>{{ r.value | title }}</option>{% endfor %}
+            </select>
+            {% if u.id != user.id %}<button type="submit" class="secondary small">Save</button>{% endif %}
+          </form>
+        </td>
+        <td>
+          {{ badge('active' if u.active else 'inactive', 'Active' if u.active else 'Inactive') }}
+          {% if u.locked_until and u.failed_logins >= 5 %} {{ badge('locked', 'Locked') }}{% endif %}
+        </td>
+        <td>
+          {% if u.id != user.id %}
+            <button class="secondary small" data-api="/api/v1/users/{{ u.username }}" data-method="PATCH"
+              data-body='{"active": {{ 'false' if u.active else 'true' }}}'
+              data-success="{{ u.username }} {{ 'deactivated' if u.active else 'reactivated' }}">{{ 'Deactivate' if u.active else 'Reactivate' }}</button>
+          {% endif %}
+          <details class="panel small"><summary>Reset password</summary>
+            <form class="inline-form" data-api="/api/v1/users/{{ u.username }}/reset-password" data-success="Password reset for {{ u.username }}">
+              <label>New password <input name="new_password" type="password" required autocomplete="new-password"></label>
+              <button type="submit" class="small">Reset</button>
+            </form>
+          </details>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

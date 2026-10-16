@@ -1,0 +1,21 @@
+{% macro badge(value, label=None) -%}
+  <span class="badge {{ value }}">{{ label or value | replace('_', ' ') | title }}</span>
+{%- endmacro %}
+
+{% macro order_badge(order) -%}
+  {{ badge(order.status.value) }}{% if order.is_overdue %} {{ badge('overdue', 'Overdue') }}{% endif %}
+{%- endmacro %}
+
+{% macro pager(p) -%}
+  <div class="pager">
+    <span>{% if p.total %}{{ p.start }}–{{ p.end }} of {{ p.total }}{% else %}No records{% endif %}</span>
+    <span class="links">
+      {% if p.prev %}<a class="button secondary small" href="{{ p.prev }}">← Previous</a>{% endif %}
+      {% if p.next %}<a class="button secondary small" href="{{ p.next }}">Next →</a>{% endif %}
+    </span>
+  </div>
+{%- endmacro %}
+
+{% macro tol(r) -%}
+  {{ '%+g' % r.lower_tol }} / {{ '%+g' % r.upper_tol }}
+{%- endmacro %}

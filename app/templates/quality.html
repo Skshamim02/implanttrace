@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "macros.html" import badge, tol %}
+{% block title %}Quality{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Quality</h1><p class="muted small">Import inspection data and decide on held orders</p></div>
+</div>
+
+{% if can_sign %}
+<section class="card">
+  <h2>Import CMM results</h2>
+  <p class="muted small">CSV with columns <span class="mono">order_no, serial_no, characteristic, nominal, lower_tol, upper_tol, measured, measured_at</span>.
+    One bad row rejects the whole file. The same file is never imported twice. Files dropped in the shared inbox folder are imported automatically.</p>
+  <form class="inline-form" data-api="/api/v1/inspections/import" data-upload data-result="import-result" data-success="Import finished">
+    <label>File <input type="file" name="file" accept=".csv,text/csv" required></label>
+    <button type="submit">Import</button>
+  </form>
+  <div id="import-result" hidden></div>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Hold queue <span class="muted small">({{ holds | length }})</span></h2>
+  {% if not holds %}<p class="empty">No orders on hold. 👍</p>{% endif %}
+  {% for o in holds %}
+    {% set fails = o.inspections | rejectattr('passed') | list %}
+    <article class="card" id="{{ o.order_no }}">
+      <h3><a href="/orders/{{ o.order_no }}">{{ o.order_no }}</a> {{ badge('ON_HOLD') }}</h3>
+      <p class="muted small">{{ o.part.part_number }} · Qty {{ o.quantity }} · Heat {{ o.material.heat_number }}</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Serial</th><th>Characteristic</th><th class="num">Nominal</th><th class="num">Tolerance</th><th class="num">Measured</th><th class="num">Deviation</th><th>File</th></tr></thead>
+        <tbody>
+        {% for r in fails %}
+          <tr><td class="mono">{{ r.serial_no or 'batch' }}</td><td>{{ r.characteristic }}</td><td class="num">{{ r.nominal }}</td>
+            <td class="num nowrap">{{ tol(r) }}</td><td class="num"><b>{{ r.measured }}</b></td>
+            <td class="num">{{ '%+.4f' % (r.measured - r.nominal) }}</td><td class="small muted">{{ r.imported_file.filename }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% if can_sign %}
+      <details class="panel">
+        <summary>Record disposition</summary>
+        <form data-api="/api/v1/work-orders/{{ o.order_no }}/disposition" data-success="Disposition signed for {{ o.order_no }}">
+          <div class="form-grid">
+            <label>Decision
+              <select name="decision" required>
+                <option value="">Choose…</option>
+                <option value="REWORK">Rework and re-inspect</option>
+                <option value="USE_AS_IS">Use as is (concession)</option>
+                <option value="SCRAP">Scrap the order</option>
+              </select>
+            </label>
+            <label>NCR number <input name="ncr_number" required maxlength="30" placeholder="NCR-2026-041"></label>
+          </div>
+          <label>Justification <textarea name="notes" required minlength="10" maxlength="4000" placeholder="Root cause, containment, and why this decision is acceptable"></textarea></label>
+          <label>Electronic signature: re-enter your password
+            <input name="password" type="password" autocomplete="current-password" required>
+          </label>
+          <p class="muted small">By signing you, <b>{{ user.full_name }}</b>, approve this decision. Your signature is permanently linked to the record.</p>
+          <div class="form-actions"><button type="submit">Sign and record</button></div>
+        </form>
+      </details>
+      {% endif %}
+    </article>
+  {% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,4 @@
+order_no,serial_no,characteristic,nominal,lower_tol,upper_tol,measured,measured_at
+WO-1013,WO-1013-0001,Taper diameter,12.000,-0.010,0.010,12.004,2026-10-16T10:02:00
+WO-1013,WO-1013-0002,Taper diameter,12.000,-0.010,0.010,12.014,2026-10-16T10:05:00
+WO-1013,WO-1013-0003,Taper diameter,12.000,-0.010,0.010,11.998,2026-10-16T10:08:00

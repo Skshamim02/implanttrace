@@ -1,0 +1,46 @@
+# Local / single-server deployment. In production put a TLS reverse proxy (Caddy, nginx, IIS ARR)
+# in front of `api` and set COOKIE_SECURE=true. See docs/deployment.md.
+x-app: &app
+  build: .
+  env_file:
+    - path: .env
+      required: false  # optional; see .env.example
+  environment:
+    DATABASE_URL: postgresql+psycopg://implanttrace:${POSTGRES_PASSWORD:-implanttrace}@db:5432/implanttrace
+  depends_on:
+    db:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: implanttrace
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-implanttrace}
+      POSTGRES_DB: implanttrace
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U implanttrace"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    <<: *app
+    command: ["web"]
+    ports:
+      - "8000:8000"
+
+  watcher:
+    <<: *app
+    command: ["watcher"]
+    depends_on:
+      api:
+        condition: service_healthy  # api runs the migrations first
+    volumes:
+      - ./inbox:/srv/inbox  # point the CMM export share here
+
+volumes:
+  pgdata:

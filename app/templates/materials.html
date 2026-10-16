@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "macros.html" import pager as pg %}
+{% block title %}Materials{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Materials</h1><p class="muted small">Raw-material heats received with their mill certificates</p></div>
+</div>
+
+{% if user.has_role(Role.SUPERVISOR, Role.QUALITY) %}
+<details class="card panel">
+  <summary>Receive material</summary>
+  <form data-api="/api/v1/materials" data-success="Heat {heat_number} received">
+    <div class="form-grid">
+      <label>Heat number <input name="heat_number" required maxlength="50" placeholder="H-24-1002"></label>
+      <label>Grade <input name="grade" required maxlength="50" placeholder="Ti-6Al-4V ELI (ASTM F136)"></label>
+      <label>Supplier <input name="supplier" required maxlength="100"></label>
+      <label>Mill certificate ref. <input name="cert_ref" required maxlength="100"></label>
+    </div>
+    <div class="form-actions"><button type="submit">Receive</button></div>
+  </form>
+</details>
+{% endif %}
+
+<section class="card">
+  <form class="filters" method="get" action="/materials">
+    <label>Search <input name="search" value="{{ search }}" placeholder="Heat, grade or supplier"></label>
+    <button type="submit" class="secondary">Search</button>
+  </form>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Heat</th><th>Grade</th><th>Supplier</th><th>Certificate</th><th>Received</th><th></th></tr></thead>
+    <tbody>
+    {% for m in materials %}
+      <tr><td class="mono"><b>{{ m.heat_number }}</b></td><td>{{ m.grade }}</td><td>{{ m.supplier }}</td><td class="mono">{{ m.cert_ref }}</td>
+        <td class="nowrap">{{ m.received_at | dt }}</td><td><a href="/trace?heat={{ m.heat_number }}">Trace →</a></td></tr>
+    {% else %}<tr><td colspan="6" class="empty">No materials received yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {{ pg(pager) }}
+</section>
+{% endblock %}

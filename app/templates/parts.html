@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "macros.html" import badge %}
+{% block title %}Parts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Parts</h1><p class="muted small">Part numbers and their production routes. A route is locked once orders exist; change the process with a new part revision.</p></div>
+</div>
+
+{% if user.has_role(Role.SUPERVISOR) %}
+<details class="card panel">
+  <summary>Add part</summary>
+  <form data-api="/api/v1/parts" data-success="Part {part_number} created">
+    <div class="form-grid">
+      <label>Part number <input name="part_number" required maxlength="50" placeholder="HIP-STEM-16-RevB"></label>
+      <label>Description <input name="description" required maxlength="200"></label>
+      <label>Customer <input name="customer" required maxlength="100"></label>
+    </div>
+    <label>Route: one operation per line, in order
+      <textarea name="route" required data-type="lines">Turning
+Milling
+Polishing
+Inspection
+Cleaning
+Packing</textarea>
+    </label>
+    <div class="form-actions"><button type="submit">Create part</button></div>
+  </form>
+</details>
+{% endif %}
+
+<section class="card">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Part</th><th>Description</th><th>Customer</th><th>Route</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for p in parts %}
+      <tr>
+        <td class="mono"><b>{{ p.part_number }}</b></td><td>{{ p.description }}</td><td>{{ p.customer }}</td>
+        <td class="small">{% for s in p.route %}{{ s.seq }}. {{ s.name }}{{ ' → ' if not loop.last }}{% endfor %}</td>
+        <td>{{ badge('active' if p.active else 'inactive', 'Active' if p.active else 'Retired') }}</td>
+        <td>{% if user.has_role(Role.SUPERVISOR) %}
+          <button class="secondary small" data-api="/api/v1/parts/{{ p.part_number }}/{{ 'retire' if p.active else 'activate' }}"
+            data-success="{{ p.part_number }} {{ 'retired' if p.active else 'activated' }}">{{ 'Retire' if p.active else 'Activate' }}</button>
+        {% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="6" class="empty">No parts defined.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

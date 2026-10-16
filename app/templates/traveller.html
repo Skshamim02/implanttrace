@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Traveller {{ order.order_no }} · ImplantTrace</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<div class="traveller">
+  <div class="actions"><button type="button" data-print>Print</button> <a class="button secondary" href="/orders/{{ order.order_no }}">Back to order</a></div>
+  <div class="head">
+    <div>
+      <h1>Job traveller · {{ order.order_no }}</h1>
+      <table>
+        <tr><th>Part</th><td>{{ order.part.part_number }} · {{ order.part.description }}</td></tr>
+        <tr><th>Customer</th><td>{{ order.part.customer }}</td></tr>
+        <tr><th>Quantity</th><td>{{ order.quantity }}</td></tr>
+        <tr><th>Material</th><td>Heat {{ order.material.heat_number }} · {{ order.material.grade }} · {{ order.material.supplier }} · cert {{ order.material.cert_ref }}</td></tr>
+        <tr><th>Due</th><td>{{ order.due_date.strftime('%d %b %Y') if order.due_date else '–' }}</td></tr>
+        <tr><th>Serials</th><td>{{ order.units[0].serial_no }} – {{ order.units[-1].serial_no }}</td></tr>
+      </table>
+    </div>
+    <div class="qr">{{ qr | safe }}<div class="small">Scan at each machine</div></div>
+  </div>
+  <h3>Route</h3>
+  <table>
+    <thead><tr><th>#</th><th>Operation</th><th>Status at print</th><th>Machine</th><th>Operator</th><th>Good</th><th>Scrap</th></tr></thead>
+    <tbody>
+      {% for s in order.steps %}
+        {% set l = s.logs[-1] if s.logs else None %}
+        <tr><td>{{ s.seq }}</td><td>{{ s.name }}</td><td>{{ s.status.value | replace('_', ' ') | title }}</td>
+          <td>{{ l.machine if l else '' }}</td><td>{{ l.operator if l else '' }}</td>
+          <td>{{ l.qty_good if l and l.qty_good is not none else '' }}</td><td>{{ l.qty_scrap if l and l.qty_scrap is not none else '' }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="small">Printed {{ printed_at | dt }} UTC by {{ user.username }}. The electronic record in ImplantTrace is the master record; this printout is for reference at the machine.</p>
+</div>
+</body>
+</html>

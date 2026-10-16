@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% from "macros.html" import badge, order_badge, tol %}
+{% block title %}{{ order.order_no }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="small muted"><a href="/orders">Work orders</a> /</p>
+    <h1>{{ order.order_no }} {{ order_badge(order) }}</h1>
+    <p class="muted">{{ order.part.part_number }} · {{ order.part.description }} · {{ order.part.customer }}</p>
+  </div>
+  <div class="form-actions">
+    <a class="button secondary" href="/orders/{{ order.order_no }}/traveller">Print traveller</a>
+    {% if user.has_role(Role.OPERATOR, Role.SUPERVISOR) and order.status.value in ('RELEASED', 'IN_PROGRESS') %}
+      <a class="button" href="/station?order={{ order.order_no }}">Open in operator station</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if order.status == OrderStatus.ON_HOLD %}
+  <div class="notice warn"><b>On hold:</b> {{ open_failures }} out-of-tolerance result(s) need a Quality decision.
+    {% if user.has_role(Role.QUALITY) %}<a href="/quality#{{ order.order_no }}">Disposition in the hold queue →</a>{% endif %}</div>
+{% endif %}
+
+<section class="grid grid-4">
+  <div class="card kpi"><div class="label">Quantity</div><div class="value">{{ order.quantity }}</div></div>
+  <div class="card kpi"><div class="label">Material heat</div><div class="value mono"><a href="/trace?heat={{ order.material.heat_number }}">{{ order.material.heat_number }}</a></div><div class="sub">{{ order.material.grade }} · cert {{ order.material.cert_ref }}</div></div>
+  <div class="card kpi"><div class="label">Due</div><div class="value">{{ order.due_date.strftime('%d %b') if order.due_date else '–' }}</div><div class="sub">{{ order.due_date.strftime('%Y') if order.due_date }}</div></div>
+  <div class="card kpi"><div class="label">Released</div><div class="value">{{ order.created_at.strftime('%d %b') }}</div><div class="sub">{{ order.created_at | dt }}</div></div>
+</section>
+
+<section class="card">
+  <h2>Route</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>#</th><th>Step</th><th>Status</th><th>Operator</th><th>Machine</th><th>Started</th><th>Finished</th><th class="num">Good</th><th class="num">Scrap</th></tr></thead>
+    <tbody>
+    {% for s in order.steps %}
+      {% set logs = s.logs or [None] %}
+      {% for l in logs %}
+        <tr>
+          {% if loop.first %}<td rowspan="{{ logs | length }}">{{ s.seq }}</td><td rowspan="{{ logs | length }}"><b>{{ s.name }}</b></td><td rowspan="{{ logs | length }}">{{ badge(s.status.value) }}</td>{% endif %}
+          <td>{{ l.operator if l else '' }}{% if l and l.finished_by and l.finished_by != l.operator %}<div class="muted small">closed by {{ l.finished_by }}</div>{% endif %}</td>
+          <td class="mono">{{ l.machine if l else '' }}</td>
+          <td class="nowrap">{{ l.started_at | dt if l else '' }}</td>
+          <td class="nowrap">{{ l.finished_at | dt if l else '' }}</td>
+          <td class="num">{{ l.qty_good if l and l.qty_good is not none else '' }}</td>
+          <td class="num">{{ l.qty_scrap if l and l.qty_scrap is not none else '' }}</td>
+        </tr>
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Inspection results <span class="muted small">({{ order.inspections | length }})</span></h2>
+  {% if order.inspections %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Serial</th><th>Characteristic</th><th class="num">Nominal</th><th class="num">Tolerance</th><th class="num">Measured</th><th>Result</th><th>Measured</th><th>File</th></tr></thead>
+    <tbody>
+    {% for r in order.inspections %}
+      <tr>
+        <td class="mono">{{ r.serial_no or 'batch' }}</td>
+        <td>{{ r.characteristic }}</td>
+        <td class="num">{{ r.nominal }}</td>
+        <td class="num nowrap">{{ tol(r) }}</td>
+        <td class="num"><b>{{ r.measured }}</b></td>
+        <td>{{ badge('PASS' if r.passed else 'FAIL', 'Pass' if r.passed else 'Fail') }}</td>
+        <td class="nowrap">{{ r.measured_at | dt }}</td>
+        <td class="small muted">{{ r.imported_file.filename }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="empty">No inspection data imported yet.</p>{% endif %}
+</section>
+
+{% if order.dispositions %}
+<section class="card">
+  <h2>Quality dispositions</h2>
+  <table>
+    <thead><tr><th>Decision</th><th>NCR</th><th>Justification</th><th>Signed</th></tr></thead>
+    <tbody>
+    {% for d in order.dispositions %}
+      <tr>
+        <td>{{ badge(d.decision.value) }}</td>
+        <td class="mono">{{ d.ncr_number }}</td>
+        <td>{{ d.notes }}</td>
+        <td class="small">{% if d.signature %}<b>{{ d.signature.full_name }}</b> ({{ d.signature.username }})<br>{{ d.signature.meaning }}<br><span class="muted">{{ d.signature.signed_at | dt }}</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="grid grid-2">
+  <div class="card">
+    <h2>Serial numbers <span class="muted small">({{ order.units | length }})</span></h2>
+    <p class="mono small">{% for u in order.units %}<a href="/trace?serial={{ u.serial_no }}">{{ u.serial_no }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>
+  </div>
+  <div class="card">
+    <h2>Change history</h2>
+    <ul class="timeline">
+      {% for a in history %}
+        <li><span class="who">{{ a.changed_by }}</span> · {{ a.action | lower }} {{ a.table_name }}{% if a.field %}: {{ a.field }} {{ a.old_value }} → {{ a.new_value }}{% endif %}
+          <div class="muted">{{ a.reason or '' }} · {{ a.at | dt }}</div></li>
+      {% else %}<li class="muted">No changes recorded.</li>{% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}

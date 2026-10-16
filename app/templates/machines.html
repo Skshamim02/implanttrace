@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "macros.html" import badge %}
+{% block title %}Machines{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Machines</h1><p class="muted small">Only machines in service can be selected at the operator station</p></div>
+</div>
+
+{% if user.has_role(Role.SUPERVISOR) %}
+<details class="card panel">
+  <summary>Add machine</summary>
+  <form data-api="/api/v1/machines" data-success="Machine {code} added">
+    <div class="form-grid">
+      <label>Code <input name="code" required maxlength="30" placeholder="CNC-MILL-06"></label>
+      <label>Name <input name="name" required maxlength="100" placeholder="DMG Mori DMU 50"></label>
+      <label>Area <input name="area" required maxlength="50" placeholder="Milling cell"></label>
+    </div>
+    <div class="form-actions"><button type="submit">Add machine</button></div>
+  </form>
+</details>
+{% endif %}
+
+<section class="card">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Code</th><th>Name</th><th>Area</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for m in machines %}
+      <tr><td class="mono"><b>{{ m.code }}</b></td><td>{{ m.name }}</td><td>{{ m.area }}</td>
+        <td>{{ badge('active' if m.active else 'inactive', 'In service' if m.active else 'Out of service') }}</td>
+        <td>{% if user.has_role(Role.SUPERVISOR) %}
+          <button class="secondary small" data-api="/api/v1/machines/{{ m.code }}" data-method="PATCH"
+            data-body='{"active": {{ 'false' if m.active else 'true' }}}'
+            data-success="{{ m.code }} {{ 'taken out of service' if m.active else 'back in service' }}">{{ 'Take out of service' if m.active else 'Return to service' }}</button>
+        {% endif %}</td></tr>
+    {% else %}<tr><td colspan="5" class="empty">No machines registered.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

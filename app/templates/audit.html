@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "macros.html" import pager as pg %}
+{% block title %}Audit trail{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Audit trail</h1><p class="muted small">Every change to every record: who, when, old → new, and why. Append-only.</p></div>
+  <a class="button secondary" href="/api/v1/audit/export.csv{{ '?' ~ export_qs if export_qs }}">Export CSV</a>
+</div>
+
+<section class="card">
+  <form class="filters" method="get" action="/audit">
+    <label>Table
+      <select name="table">
+        <option value="">All</option>
+        {% for t in ['work_order','route_step','operation_log','inspection_result','disposition','electronic_signature','material','part','machine','app_user','unit','imported_file'] %}
+          <option value="{{ t }}" {{ 'selected' if filters.get('table') == t }}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Record ID <input name="record_id" type="number" min="1" value="{{ filters.get('record_id', '') }}"></label>
+    <label>User <input name="user" value="{{ filters.get('user', '') }}"></label>
+    <label>From <input name="since" type="datetime-local" value="{{ filters.get('since', '') }}"></label>
+    <label>To <input name="until" type="datetime-local" value="{{ filters.get('until', '') }}"></label>
+    <button type="submit" class="secondary">Filter</button>
+  </form>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>When</th><th>User</th><th>Action</th><th>Record</th><th>Field</th><th>Old</th><th>New</th><th>Reason</th></tr></thead>
+    <tbody>
+    {% for a in entries %}
+      <tr>
+        <td class="nowrap small">{{ a.at | dt }}</td>
+        <td>{{ a.changed_by }}</td>
+        <td>{{ a.action }}</td>
+        <td class="nowrap">{{ a.table_name }} #{{ a.record_id }}</td>
+        <td>{{ a.field or '' }}</td>
+        <td class="small mono">{{ (a.old_value or '') | truncate(80) }}</td>
+        <td class="small mono">{{ (a.new_value or '') | truncate(80) }}</td>
+        <td class="small">{{ a.reason or '' }}</td>
+      </tr>
+    {% else %}<tr><td colspan="8" class="empty">No entries match.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {{ pg(pager) }}
+</section>
+{% endblock %}
