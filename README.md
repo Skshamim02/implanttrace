@@ -1,5 +1,10 @@
 # ImplantTrace
 
+[![CI](https://github.com/Skshamim02/implanttrace/actions/workflows/ci.yml/badge.svg)](https://github.com/Skshamim02/implanttrace/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-77%20passing-brightgreen)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Database](https://img.shields.io/badge/PostgreSQL-16-336791)
+
 **Shop-floor traceability for a precision machining plant that makes orthopaedic implants.**
 
 Paper job sheets ("travellers") get lost, filled in late and are slow to search. When a
@@ -29,7 +34,33 @@ electronic signatures.
 
 | Operator station | Quality hold queue | Backward trace |
 |---|---|---|
-| ![](docs/screenshots/station.png) | ![](docs/screenshots/quality.png) | ![](docs/screenshots/trace.png) |
+| ![Operator station](docs/screenshots/station.png) | ![Quality hold queue](docs/screenshots/quality.png) | ![Backward trace](docs/screenshots/trace-backward.png) |
+
+| Work orders | Order detail with signed rework | Printable traveller with QR |
+|---|---|---|
+| ![Work orders](docs/screenshots/work-orders.png) | ![Order detail](docs/screenshots/order-detail.png) | ![Traveller](docs/screenshots/traveller.png) |
+
+| Forward trace (heat → implants) | Audit trail | User admin |
+|---|---|---|
+| ![Forward trace](docs/screenshots/trace-forward.png) | ![Audit trail](docs/screenshots/audit-trail.png) | ![Users](docs/screenshots/users.png) |
+
+| Sign in | Phone: dashboard | Phone: operator station |
+|---|---|---|
+| ![Sign in](docs/screenshots/login.png) | ![Mobile dashboard](docs/screenshots/mobile-dashboard.png) | ![Mobile station](docs/screenshots/mobile-station.png) |
+
+## Proof it works
+
+- **Continuous integration:** every push runs on GitHub Actions: lint and format check, the full
+  test suite on **SQLite and PostgreSQL 16**, migrations plus a check that the database refuses
+  audit-log edits, demo data load on PostgreSQL, and a Docker build that must start and report ready.
+  See the [CI runs](https://github.com/Skshamim02/implanttrace/actions).
+- **77 automated tests**, all passing:
+
+![77 tests passing](docs/screenshots/tests-passing.png)
+
+- **End-to-end in a real browser** (headless Edge): sign-in, operator start/finish,
+  Inspection blocked until CMM data is imported, role restrictions, and a Quality electronic
+  signature with a wrong then correct password, with no JavaScript or CSP errors.
 
 ## Quick start (local, no Docker)
 
